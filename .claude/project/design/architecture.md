@@ -18,6 +18,7 @@
 | AI提案 | Google AI Studio API（`github.com/google/generative-ai-go`）/ 本番化時に Vertex AI へ移行 |
 | インフラ | Terraform（GCP のプロビジョニング。Vercel は Terraform 外で管理） |
 | フロント 3D | Three.js（広場シーン・キャラクター） |
+| フロント UI（アイコン） | react-icons で統一 |
 
 ---
 
@@ -186,7 +187,7 @@ frontend/
 │   │   └── app.tsx        # /app/* ホーム・検索・広場・商品一覧・アカウント設定
 │   ├── pages/
 │   │   ├── lp.tsx         # LP（別設計）
-│   │   └── app/           # ログイン後（home, search, plaza, products, account）
+│   │   └── app/           # ログイン後（home, search, plaza, products, cart, account）
 │   ├── components/        # Header, HamburgerMenu, SearchBar, PlazaScene 等
 │   └── lib/
 └── vercel.json
