@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { Suspense, useEffect, useState, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getProducts } from "@/lib/api";
 import { getMockProductsResponse } from "@/data/products";
@@ -12,7 +12,7 @@ type ProductRow = {
   Store?: { name?: string };
 };
 
-export default function ProductsPage() {
+function ProductsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const q = searchParams.get("q") ?? "";
@@ -102,5 +102,13 @@ export default function ProductsPage() {
         <p className="text-gray-500 mt-4">該当する商品がありません</p>
       )}
     </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={<p className="text-gray-600">読み込み中…</p>}>
+      <ProductsContent />
+    </Suspense>
   );
 }

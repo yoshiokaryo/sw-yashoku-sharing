@@ -7,7 +7,7 @@ const titleVariants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.5, ease: "easeOut" },
+    transition: { duration: 0.5, ease: "easeOut" as const },
   },
 };
 
@@ -16,7 +16,7 @@ const taglineVariants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.4, delay: 0.15, ease: "easeOut" },
+    transition: { duration: 0.4, delay: 0.15, ease: "easeOut" as const },
   },
 };
 
