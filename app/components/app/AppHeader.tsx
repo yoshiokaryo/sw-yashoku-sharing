@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { cartCount } from "@/lib/cart";
 
 function SearchIcon() {
@@ -11,6 +11,47 @@ function SearchIcon() {
       <circle cx="11" cy="11" r="8" />
       <path d="m21 21-4.35-4.35" />
     </svg>
+  );
+}
+
+/** 検索フォーム（URL の q と同期）。useSearchParams 利用のため Suspense でラップして使用 */
+function SearchForm() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const isProductsPage = pathname === "/app/products";
+  const qFromUrl = isProductsPage ? (searchParams.get("q") ?? "") : "";
+
+  useEffect(() => {
+    setSearchQuery(qFromUrl);
+  }, [qFromUrl]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    if (q) {
+      router.push(`/app/products?q=${encodeURIComponent(q)}`);
+    } else {
+      router.push("/app/products");
+    }
+  };
+
+  return (
+    <form onSubmit={handleSearch} className="flex-1 flex items-center gap-2 max-w-md">
+      <span className="text-gray-400 shrink-0" aria-hidden>
+        <SearchIcon />
+      </span>
+      <input
+        type="search"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        placeholder="商品を検索"
+        className="flex-1 min-w-0 py-2 px-3 rounded-lg border border-gray-300 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-lp-accent focus:border-transparent"
+        aria-label="商品を検索"
+      />
+    </form>
   );
 }
 
@@ -37,8 +78,6 @@ function MenuIcon() {
 export function AppHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [count, setCount] = useState(0);
-  const [searchQuery, setSearchQuery] = useState("");
-  const router = useRouter();
 
   useEffect(() => {
     setCount(cartCount());
@@ -46,32 +85,19 @@ export function AppHeader() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const q = searchQuery.trim();
-    if (q) {
-      router.push(`/app/products?q=${encodeURIComponent(q)}`);
-    } else {
-      router.push("/app/products");
-    }
-  };
-
   return (
     <header className="sticky top-0 z-[100] bg-white border-b border-gray-200 py-2 px-4">
       <nav className="flex items-center gap-3">
-        <form onSubmit={handleSearch} className="flex-1 flex items-center gap-2 max-w-md">
-          <span className="text-gray-400 shrink-0" aria-hidden>
-            <SearchIcon />
-          </span>
-          <input
-            type="search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="商品を検索"
-            className="flex-1 min-w-0 py-2 px-3 rounded-lg border border-gray-300 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-lp-accent focus:border-transparent"
-            aria-label="商品を検索"
-          />
-        </form>
+        <Suspense
+          fallback={
+            <div className="flex-1 flex items-center gap-2 max-w-md py-2 px-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-400">
+              <SearchIcon />
+              <span className="text-sm">商品を検索</span>
+            </div>
+          }
+        >
+          <SearchForm />
+        </Suspense>
         <div className="flex items-center gap-2 shrink-0">
           <Link href="/app/cart" className="inline-flex items-center justify-center w-10 h-10 text-gray-700 relative" aria-label="カート">
             <CartIcon />
