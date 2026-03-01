@@ -1,0 +1,7 @@
+# 本番環境の state 用 GCS バックエンド設定例
+# コピーして backend.config を作成し、bucket を実際のバケット名に変更すること
+# 初回: terraform init -backend-config=backend.config
+# backend.config は .gitignore に追加推奨
+
+bucket = "your-project-tfstate-prod"
+prefix = "prod"
