@@ -317,16 +317,6 @@ export default function LpPage() {
         </AnimatedStaggerContainer>
       </AnimatedSection>
 
-      {/* CTA: タップ領域 44px 確保 */}
-      <AnimatedSection className="py-8 md:py-10 text-center">
-        <Link
-          href="/app"
-          className="inline-flex items-center justify-center min-h-[48px] py-3 px-6 md:px-8 rounded-lg bg-lp-accent text-white font-bold text-base md:text-lg no-underline hover:opacity-90 w-full sm:w-auto"
-        >
-          ログインしてメニューへ
-        </Link>
-      </AnimatedSection>
-
       <LpFooter />
     </div>
   );
