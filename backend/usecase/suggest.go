@@ -16,10 +16,15 @@ func NewSuggestUseCase(productRepo port.ProductRepository, ai port.AIGateway) *S
 	return &SuggestUseCase{productRepo: productRepo, ai: ai}
 }
 
+const maxProductsForSuggest = 20
+
 func (u *SuggestUseCase) Suggest(ctx context.Context, req *domain.SuggestRequest) ([]*domain.Suggestion, error) {
 	products, err := u.productRepo.ListAvailableProducts(ctx)
 	if err != nil {
 		return nil, err
+	}
+	if len(products) > maxProductsForSuggest {
+		products = products[:maxProductsForSuggest]
 	}
 	return u.ai.Suggest(ctx, req, products)
 }

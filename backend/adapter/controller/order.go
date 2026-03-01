@@ -18,17 +18,31 @@ func NewOrderController(uc *usecase.OrderUseCase) *OrderController {
 	return &OrderController{uc: uc}
 }
 
-func (c *OrderController) CreateOrder(ctx *gin.Context) {
-	userID, _ := ctx.Get(middleware.UserIDKey)
+// CreateOrderRequest is the body for POST /api/orders (items only; user_id from auth).
+type CreateOrderRequest struct {
+	Items []domain.OrderItem `json:"items"`
+}
 
-	var req domain.Order
+func (c *OrderController) CreateOrder(ctx *gin.Context) {
+	userIDVal, ok := ctx.Get(middleware.UserIDKey)
+	if !ok {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	userID := userIDVal.(string)
+
+	var req CreateOrderRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	req.UserID = userID.(string)
+	if len(req.Items) == 0 {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "items required"})
+		return
+	}
 
-	order, err := c.uc.CreateOrder(ctx.Request.Context(), &req)
+	order := &domain.Order{UserID: userID, Status: "pending", Items: req.Items}
+	order, err := c.uc.CreateOrder(ctx.Request.Context(), order)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

@@ -26,18 +26,20 @@ func main() {
 	// Adapter: repositories and AI gateway
 	productRepo := repository.NewProductRepository(pool)
 	orderRepo := repository.NewOrderRepository(pool)
+	profileRepo := repository.NewProfileRepository(pool)
 	gemini := ai.NewGeminiGateway(os.Getenv("GEMINI_API_KEY"))
 
 	// Use cases
 	productUC := usecase.NewProductUseCase(productRepo)
 	orderUC := usecase.NewOrderUseCase(orderRepo)
 	suggestUC := usecase.NewSuggestUseCase(productRepo, gemini)
+	userUC := usecase.NewUserUseCase(profileRepo)
 
 	// Controllers
 	productCtrl := controller.NewProductController(productUC)
 	suggestCtrl := controller.NewSuggestController(suggestUC)
 	orderCtrl := controller.NewOrderController(orderUC)
-	userCtrl := controller.NewUserController()
+	userCtrl := controller.NewUserController(userUC)
 
 	// Router
 	r := router.New(productCtrl, suggestCtrl, orderCtrl, userCtrl)

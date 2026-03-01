@@ -1,29 +1,40 @@
 package middleware
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 const UserIDKey = "user_id"
 
+// customClaims has "sub" for Supabase user id.
+type customClaims struct {
+	Sub string `json:"sub"`
+	jwt.RegisteredClaims
+}
+
 // Auth returns a Gin middleware that validates Supabase JWT and sets user_id in the context.
-// TODO(task-004): Add proper HS256 signature verification using SUPABASE_JWT_SECRET.
+// Set SUPABASE_JWT_SECRET (or JWT_SECRET) to verify signature. If unset, only payload is decoded (dev only).
 func Auth() gin.HandlerFunc {
+	secret := os.Getenv("SUPABASE_JWT_SECRET")
+	if secret == "" {
+		secret = os.Getenv("JWT_SECRET")
+	}
+
 	return func(c *gin.Context) {
 		header := c.GetHeader("Authorization")
 		if !strings.HasPrefix(header, "Bearer ") {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
 			return
 		}
-		token := strings.TrimPrefix(header, "Bearer ")
+		tokenStr := strings.TrimPrefix(header, "Bearer ")
 
-		userID, err := extractUserID(token)
+		userID, err := extractUserID(tokenStr, secret)
 		if err != nil || userID == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 			return
@@ -34,27 +45,33 @@ func Auth() gin.HandlerFunc {
 	}
 }
 
-// extractUserID decodes a JWT payload and returns the sub claim as the user ID.
-// NOTE: This does NOT verify the signature. Full verification will be added in task-004.
-func extractUserID(token string) (string, error) {
-	parts := strings.Split(token, ".")
-	if len(parts) != 3 {
-		return "", fmt.Errorf("invalid JWT format")
+// extractUserID verifies (if secret is set) or decodes the JWT and returns the sub claim.
+func extractUserID(tokenStr string, secret string) (string, error) {
+	if secret != "" {
+		token, err := jwt.ParseWithClaims(tokenStr, &customClaims{}, func(t *jwt.Token) (interface{}, error) {
+			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+			}
+			return []byte(secret), nil
+		})
+		if err != nil {
+			return "", err
+		}
+		claims, ok := token.Claims.(*customClaims)
+		if !ok || !token.Valid {
+			return "", fmt.Errorf("invalid claims")
+		}
+		return claims.Sub, nil
 	}
 
-	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	// No secret: decode payload only (dev only; do not use in production)
+	token, _, err := jwt.NewParser().ParseUnverified(tokenStr, &customClaims{})
 	if err != nil {
-		return "", fmt.Errorf("failed to decode JWT payload: %w", err)
+		return "", err
 	}
-
-	var claims map[string]any
-	if err := json.Unmarshal(payload, &claims); err != nil {
-		return "", fmt.Errorf("failed to parse JWT claims: %w", err)
-	}
-
-	sub, ok := claims["sub"].(string)
+	claims, ok := token.Claims.(*customClaims)
 	if !ok {
-		return "", fmt.Errorf("missing sub claim")
+		return "", fmt.Errorf("invalid claims")
 	}
-	return sub, nil
+	return claims.Sub, nil
 }
