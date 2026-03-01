@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # 003 バックエンド（Go）クリーンアーキテクチャ骨組み
