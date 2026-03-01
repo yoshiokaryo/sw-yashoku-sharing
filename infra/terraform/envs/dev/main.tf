@@ -1,3 +1,7 @@
+data "google_project" "project" {
+  project_id = var.project
+}
+
 module "api" {
   source = "../../modules/cloudrun"
 
@@ -19,4 +23,13 @@ module "api" {
     env     = "dev"
     service = "api"
   }
+}
+
+# Vertex AI（Gemini 等）の API 有効化と、Cloud Run 実行 SA への権限付与
+module "vertexai" {
+  source = "../../modules/vertexai"
+
+  project             = var.project
+  region              = var.region
+  api_invoker_sa_email = "${data.google_project.project.number}-compute@developer.gserviceaccount.com"
 }

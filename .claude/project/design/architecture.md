@@ -10,13 +10,12 @@
 
 | 領域 | 採用技術 |
 | --- | --- |
-| フロント / LP | Hono（Vercel）/ PWA（Progressive Web App） |
-| バックエンドAPI | Go（Gin）/ Cloud Run |
-| ホスティング | Vercel（フロント）/ GCP Cloud Run（バックエンド） |
+| フロント / LP / バックエンドAPI | **Hono**（Vercel）一括。ページと API を同一アプリで提供 |
+| ホスティング | **Vercel**（フロント・API ともに同一プロジェクトでデプロイ） |
 | 認証 | Supabase Auth（`@supabase/supabase-js` で認証・DB・セッション管理を統一） |
 | データベース | Supabase（PostgreSQL） |
-| AI提案 | Google AI Studio API（`github.com/google/generative-ai-go`）/ 本番化時に Vertex AI へ移行 |
-| インフラ | Terraform（GCP のプロビジョニング。Vercel は Terraform 外で管理） |
+| AI提案 | Google AI Studio API（TypeScript から Gemini API を呼び出し。本番化時に Vertex AI へ移行可） |
+| インフラ | Vercel で完結。GCP は必要に応じて（例: Secret Manager）のみ。Terraform は任意 |
 | フロント 3D | Three.js（広場シーン・キャラクター） |
 | フロント UI（アイコン） | react-icons で統一 |
 
@@ -29,43 +28,41 @@
 ```mermaid
 graph TD
     LP["LP\n(Hono / Vercel)"] -->|アカウント作成ボタン| A
-    A["ウェブアプリ\n(Hono / Vercel)"] -->|認証| C["Supabase Auth"]
-    A -->|HTTPS/REST| B["Go API\n(Gin / Cloud Run)"]
-    B --> D["Supabase\n(PostgreSQL)"]
-    B -->|AI提案リクエスト| E["Google AI Studio API\n(Gemini)"]
+    A["ウェブアプリ + API\n(Hono / Vercel)"] -->|認証| C["Supabase Auth"]
+    A -->|/api/* ルート| D["Supabase\n(PostgreSQL)"]
+    A -->|AI提案リクエスト| E["Google AI Studio API\n(Gemini)"]
 ```
 
 ## 構成要素詳細
 
-### LP / フロント（Hono / Vercel）
+### LP / フロント・バックエンド（Hono / Vercel）
 
-- Hono の JSX サポートを使い、Vercel 上で SSR/静的ページを配信
-- LP・アプリは同一 Vercel プロジェクト内で管理可能（ルーティングで分離）
+- **Hono 単一アプリ**で、LP・ウェブアプリ画面と **API（/api/*）** の両方を提供する
+- Vercel にデプロイし、ページは JSX/SSR、API は Hono のルートハンドラで実装
 - 「アカウントを作成する」ボタンからサインアップ画面へ誘導
-- Go API へのリクエストはフロントから直接送る（HTTPS/REST）
+- フロントは同一オリジンの `/api/*` にリクエストし、認証時は Supabase のアクセストークンを `Authorization: Bearer` で付与する
 
 ### 認証システム
 
 - Supabase Auth を利用
-- 認証方式はメール（ワンタイムパスワード）またはGoogleログイン
+- 認証方式はメール（ワンタイムパスワード）または Google ログイン
 - LP からアプリへの遷移時にそのまま登録・ログイン画面へ誘導
-- フロントは Supabase のセッションを保持し、Go API 呼び出し時にアクセストークンを付与
+- フロントは Supabase のセッションを保持し、API 呼び出し時にアクセストークンを付与
 - Supabase の RLS（Row Level Security）でユーザーごとのデータアクセス制御を行う
 
-### バックエンドAPI（Go / Gin / Cloud Run）
+### バックエンドAPI（Hono ルート）
 
-- **クリーンアーキテクチャ** に準拠し、依存関係を内側向きに保つ（ドメイン → ユースケース → アダプタ → インフラ）
-- Gin は HTTP の**アダプタ**としてのみ使用し、ルーティング・リクエスト/レスポンスの変換のみ担当
+- フロントと同じ Hono アプリ内に **`/api/*`** ルートを定義する
+- Supabase クライアント（サーバー側）で DB アクセス。AI 提案は Google AI Studio（Gemini）を TypeScript から呼び出す
 - 主要エンドポイント
-    - `GET /api/products`：商品一覧・在庫情報を返す（ユースケース経由でリポジトリ取得）
-    - `POST /api/suggest`：気分・在庫をユースケースに渡し、AI ゲートウェイ経由で Gemini を呼び出して提案を返す
-- CORS 設定で Vercel ドメインからのリクエストのみ許可
+    - `GET /api/products`：商品一覧・在庫情報を返す（Supabase から取得）
+    - `POST /api/suggest`：気分・アレルギー・予算を受け取り、在庫を絞り込んだうえで Gemini を呼び出して提案を返す
+- 認証が必要な API は `Authorization: Bearer` を検証し、未認証・不正時は 401 を返す。CORS は必要に応じて設定する
 
-### インフラ（Terraform）
+### インフラ
 
-- インフラの定義・プロビジョニングは **Terraform** で管理する
-- GCP（Cloud Run、必要に応じて IAM・Secret Manager 等）をコード化。Vercel は Terraform では管理せず、Vercel ダッシュボード等で別途設定する
-- 環境ごと（dev / staging / prod）の tfvars や workspace で切り替え可能にする
+- **Vercel** に Hono アプリをデプロイすれば、フロント・API ともに稼働する
+- GCP は必須ではない。機密情報を Secret Manager で扱う場合など、必要に応じて Terraform で GCP リソースを管理する
 
 ### 商品選択画面
 
@@ -76,12 +73,12 @@ graph TD
 ### 自動提案 AI
 
 - `POST /api/suggest` でユーザーの入力（今日の気分・アレルギー等）を受け取る
-- Go API が Supabase から在庫データを取得し、AIに渡す候補を絞り込む
+- Hono API が Supabase から在庫データを取得し、AI に渡す候補を絞り込む
     - `stock > 0` のもののみ対象
     - `expires_at`（賞味期限）が近い順に優先
-    - 上位 N 件（例: 20 件）に制限してAIへ渡す
+    - 上位 N 件（例: 20 件）に制限して AI へ渡す
 - 絞り込んだ在庫データとユーザー入力からプロンプトを生成
-- Go API が Google AI Studio API（Gemini）を呼び出し、おすすめ商品リストを返す
+- Hono API が Google AI Studio API（Gemini）を呼び出し、おすすめ商品リストを返す
 
 ## データベース設計（Supabase / PostgreSQL）
 
@@ -127,7 +124,7 @@ graph TD
 
 ### 初期データ・マイグレーション
 
-- テーブル作成は Supabase の SQL エディタまたは `backend/infrastructure/db/migrations/` のマイグレーションで実行する。
+- テーブル作成は Supabase の SQL エディタまたはリポジトリ内の `sql/migrations/`（または `backend/infrastructure/db/migrations/` など）のマイグレーション SQL を手動実行する。
 - **SQL ファイルの命名**: 連番で管理する。`0001_xxx.sql`, `0002_xxx.sql` のように、`0001` から始まる4桁番号 + `_` + 内容を表すスラッグ（英数字・アンダースコア）とする。例: `0001_create_stores_and_products.sql`, `0002_create_inventory.sql`。
 - 店舗・商品・在庫の初期データは SQL シードで投入する（店舗向け画面がないため）。
 
@@ -174,98 +171,37 @@ graph TD
 
 # ディレクトリ構成
 
-## フロント（Hono）
+## アプリ全体（Hono・フロント＋API）
 
 - ログイン後の画面構成・ナビゲーション・3D 広場などは **[frontend-design.md](./frontend-design.md)** を参照。
 
 ```text
-frontend/
+frontend/                    # または app/ など単一リポジトリルート
 ├── src/
-│   ├── index.tsx          # すべてのルートを束ねる（エントリポイント）
+│   ├── index.tsx             # 全ルートを束ねる（ページ＋API）
 │   ├── routes/
-│   │   ├── auth.tsx       # ログイン、新規登録関連
-│   │   └── app.tsx        # /app/* ホーム・検索・広場・商品一覧・アカウント設定
+│   │   ├── auth.tsx          # ログイン、新規登録
+│   │   └── app.tsx           # /app/* ホーム・検索・広場・商品一覧・アカウント設定
+│   ├── api/                  # バックエンドAPI（Hono ルート）
+│   │   ├── index.ts          # /api のマウント
+│   │   ├── products.ts       # GET /api/products, GET /api/products/:id
+│   │   ├── stores.ts         # GET /api/stores
+│   │   ├── suggest.ts        # POST /api/suggest（Gemini 呼び出し）
+│   │   ├── orders.ts         # POST /api/orders
+│   │   ├── users.ts          # GET /api/users/me
+│   │   └── middleware/       # JWT 検証など
 │   ├── pages/
-│   │   ├── lp.tsx         # LP（別設計）
-│   │   └── app/           # ログイン後（home, search, plaza, products, cart, account）
-│   ├── components/        # Header, HamburgerMenu, SearchBar, PlazaScene 等
-│   └── lib/
+│   │   ├── lp.tsx
+│   │   └── app/
+│   ├── components/
+│   └── lib/                  # Supabase クライアント、API 用ユーティリティ
 └── vercel.json
 ```
 
-## インフラ（Terraform）
+- **API** は同じ Hono アプリの `/api/*` として実装し、Supabase（サーバー用クライアント）・Gemini を呼び出す。
+- 認証が必要な API では、リクエストの `Authorization: Bearer` を検証し、Supabase JWT の検証またはセッション確認を行う。
 
-- 環境は `envs/dev` と `envs/prod` で分け、共通リソースは `modules/` で再利用する
-- 詳細は [infra-design.md](./infra-design.md) を参照
+## インフラ
 
-```text
-infra/terraform/         # Terraform ルート
-├── modules/
-│   └── cloudrun/       # Cloud Run のみ（Vercel は Terraform 外）
-└── envs/
-    ├── dev/            # 開発環境
-    └── prod/           # 本番環境
-```
-
-## バックエンド（Go / Gin・クリーンアーキテクチャ）
-
-### レイヤーと依存の向き
-
-- **Entity（domain）**: 企業・アプリの中心となるルール。他レイヤーに依存しない。
-- **Use Case（usecase）**: アプリケーションのユースケース。Entity と Port（インターフェース）にのみ依存。Repository・AI 等はインターフェースで注入。
-- **Interface Adapters（adapter）**: コントローラ（Gin ハンドラ）、リポジトリ実装、AI クライアント実装。Use Case が定義した Port を実装する。
-- **Frameworks & Drivers（infrastructure）**: DB 接続・外部 API クライアントの具体的な実装。adapter から利用される。
-
-依存の向き: **domain ← usecase ← adapter / infrastructure**（外側は内側のインターフェースに依存するのみ）。
-
-### ディレクトリ構成
-
-```text
-backend/
-├── main.go                    # エントリポイント・DI ワイヤリング
-├── router/
-│   └── router.go              # Gin ルーティング定義（adapter の controller を登録）
-│
-├── domain/                    # Entity 層（他に依存しない）
-│   ├── product.go             # Product, Store, Inventory 等のエンティティ
-│   ├── order.go               # Order エンティティ
-│   └── suggestion.go          # Suggestion 等の値オブジェクト
-│
-├── usecase/                   # Use Case 層（Port を定義し、ビジネスロジックを記述）
-│   ├── port/                  # 外向きインターフェース（Repository, AI 等）
-│   │   ├── product_repository.go
-│   │   ├── order_repository.go
-│   │   └── ai_gateway.go
-│   ├── product.go             # 商品一覧・詳細取得ユースケース
-│   ├── suggest.go             # AI 提案ユースケース（在庫取得 + AI 呼び出し）
-│   └── order.go               # 注文作成ユースケース
-│
-├── adapter/                   # Interface Adapters
-│   ├── controller/            # HTTP 入出力の変換・Gin ハンドラ
-│   │   ├── product.go
-│   │   ├── suggest.go
-│   │   ├── order.go
-│   │   └── user.go
-│   ├── repository/            # Port の実装（Supabase / pgx）
-│   │   ├── product.go
-│   │   └── order.go
-│   ├── ai/                    # AI Gateway の実装（Google AI Studio / Gemini）
-│   │   └── gemini.go
-│   └── middleware/
-│       ├── auth.go            # JWT 検証（Supabase Auth トークン）
-│       └── cors.go
-│
-├── infrastructure/            # DB 接続・設定など
-│   └── db/
-│       ├── connection.go      # pgx 接続プール
-│       └── migrations/        # SQL マイグレーション（0001_xxx.sql, 0002_xxx.sql 形式）
-│
-└── Dockerfile
-```
-
-### 実装時のポイント
-
-- **domain**: 純粋な構造体・値オブジェクト。DB や HTTP の詳細は含めない。
-- **usecase**: Repository や AI Gateway は `port` のインターフェース経由でのみ呼び出し、`main.go` で具象を注入する。
-- **adapter/controller**: リクエストを DTO に変換 → usecase を呼び出し → レスポンス用 DTO に変換。Gin に依存するのはこの層のみ。
-- **adapter/repository**, **adapter/ai**: usecase の port を実装。Supabase（pgx）や Gemini API への依存はここに閉じる。
+- **Vercel** にデプロイするだけでフロント・API が動作する。
+- 詳細は [infra-design.md](./infra-design.md) を参照。Terraform は GCP リソース（Secret Manager 等）を扱う場合のみ利用する。

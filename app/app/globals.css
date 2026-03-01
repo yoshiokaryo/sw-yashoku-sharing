@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+:root {
+  --background: #fefcf5;
+  --foreground: #2c2416;
+  --lp-bg: #fefcf5;
+  --lp-ink: #2c2416;
+  --lp-accent: #c45c26;
+  --lp-accent-light: #e8a872;
+  --lp-green: #3d6b4f;
+  --lp-card: #fffbf3;
+  --lp-scribble: #e8dfd0;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-lp-bg: var(--lp-bg);
+  --color-lp-ink: var(--lp-ink);
+  --color-lp-accent: var(--lp-accent);
+  --color-lp-accent-light: var(--lp-accent-light);
+  --color-lp-green: var(--lp-green);
+  --color-lp-card: var(--lp-card);
+  --color-lp-scribble: var(--lp-scribble);
+  --font-sans: "Zen Maru Gothic", "M PLUS Rounded 1c", sans-serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: "Zen Maru Gothic", "M PLUS Rounded 1c", sans-serif;
+}
+
+/* LP: speech bubble tail */
+.lp-bubble-tail::before {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border: 2px solid var(--lp-scribble);
+  transform: rotate(45deg);
+}
+.lp-bubble-tail-1::before {
+  left: 1rem;
+  bottom: -8px;
+}
+.lp-bubble-tail-2::before {
+  left: 1.5rem;
+  bottom: -8px;
+}
+.lp-bubble-tail-r::before {
+  right: 1rem;
+  bottom: -8px;
+  left: auto;
+}
+
+/* LP dark: bubble tail and voice arrow */
+.lp-dark .lp-bubble-tail::before {
+  background: rgb(31 41 55);
+  border-color: rgb(75 85 99);
+}
+.lp-dark .lp-voice-arrow::after {
+  border-top-color: rgb(31 41 55);
+}
+
+/* LP: voice testimonial arrow */
+.lp-voice-arrow::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -10px;
+  margin-left: -8px;
+  width: 0;
+  height: 0;
+  border: 8px solid transparent;
+  border-top-color: #fff;
+  border-bottom: none;
+}

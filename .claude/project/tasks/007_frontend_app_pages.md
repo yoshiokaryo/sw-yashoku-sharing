@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 ---
 
 # 007 フロント：商品一覧・AI 提案画面と API 連携
@@ -19,50 +19,43 @@ status: pending
 
 ### 1. API クライアント（lib/api.ts）
 
-- [ ] `src/lib/api.ts` を作成
-  - [ ] ベース URL を環境変数または定数で設定
-  - [ ] 認証トークン（Supabase のセッション）を取得し、`Authorization: Bearer` で付与する fetch ラッパーを用意
-  - [ ] GET /api/products, GET /api/products/:id, GET /api/stores を呼び出す関数を実装
-  - [ ] POST /api/suggest（mood, allergies, budget）を呼び出す関数を実装
-  - [ ] POST /api/orders（注文内容）を呼び出す関数を実装
-  - [ ] GET /api/users/me を呼び出す関数を実装
+- [x] `src/lib/api.ts` を作成
+  - [x] ベース URL を環境変数 API_BASE_URL で設定（未設定時は http://localhost:8080）
+  - [x] 認証トークン（Supabase セッション）を取得し、`Authorization: Bearer` で付与する fetch ラッパー（window.api._headers）
+  - [x] getProducts, getProduct(id), getStores, suggest(body), createOrder(items), getMe を実装（401 時は _unauthorized でログインへ誘導）
 
-### 2. 商品一覧画面（pages/products または app 配下）
+### 2. 商品一覧画面（pages/app/products.tsx）
 
-- [ ] 商品一覧を表示するページを実装（routes/app から参照するパスに配置）
-- [ ] GET /api/products で取得したデータを表示
-- [ ] 商品カード形式で、残り数・割引率・有効期限を表示する（architecture の「商品選択画面」に準拠）
-- [ ] 店舗名は GET /api/stores で取得し、商品に紐づけて表示してもよい
+- [x] `/app/products` で商品一覧ページを実装
+- [x] GET /api/products で取得し、商品カード形式で残り数・割引率・有効期限・店舗名を表示
+- [x] カートに追加ボタン（Cookie 更新）
 
-### 3. AI 提案画面（pages/suggest または app 配下）
+### 3. AI 提案画面（pages/app/suggest.tsx）
 
-- [ ] AI 提案を表示するページを実装
-- [ ] 入力フォーム：今日の気分（mood）、アレルギー（allergies）、予算（budget）を入力可能にする
-- [ ] 送信ボタンで POST /api/suggest を呼び出し、レスポンスの suggestions を一覧表示する
-- [ ] 各提案に product_id, name, reason, discount_rate, price_after_discount を表示（architecture のレスポンス例に準拠）
+- [x] `/app/suggest` で AI 提案ページを実装
+- [x] 入力フォーム：気分（mood）、アレルギー（allergies、カンマ区切り）、予算（budget）
+- [x] POST /api/suggest で suggestions を取得し、name, reason, discount_rate, price_after_discount を表示
+- [x] 各提案からカートに追加可能
 
 ### 4. 注文フロー（モック）
 
-- [ ] 商品一覧または AI 提案結果から「注文する」を選んだ場合、POST /api/orders を呼び出す処理を実装（モックのため決済は行わず、注文作成と成功メッセージ表示でよい）
-- [ ] 必要に応じて注文確認モーダルやサンクス画面を用意
+- [x] カート一覧の「注文する」で POST /api/orders を呼び出し、成功時はカートを空にしてメッセージ表示
 
 ### 5. 共通コンポーネント・スタイル
 
-- [ ] 商品カード、ボタン、入力フィールド等を `src/components/` に配置（再利用可能な形）
-- [ ] **アイコンは react-icons で統一**（ハンバーガー・カート・切り替え等）
-- [ ] Tailwind 等でスタイルを整え、スマホでも見やすいレイアウトにする
+- [x] `src/components/header.ts` でヘッダー（カートボタン・ハンバーガーメニュー）を共有
+- [x] アイコンは inline SVG で実装（Hono/vanilla JS のため react-icons は未使用。React 導入時に react-icons へ差し替え可）
+- [x] 各ページでインライン style によりスマホでも見やすいレイアウト
 
 ### 6. ヘッダー・カートとカート一覧画面
 
-- [ ] **カートは Cookie で維持**する。カート内容（商品 ID・数量）を Cookie に保存し、読み込み時に復元。追加・削除・数量変更時に Cookie を更新する（[frontend-design.md](../design/frontend-design.md) の技術方針に準拠）
-- [ ] ヘッダーに**買い物カートボタン**を配置（**切り替えボタンの左**）。クリックでカート一覧ページへ遷移。カート内件数は Cookie から算出してバッジ表示してもよい
-- [ ] **カート一覧ページ**（`/app/cart`）を実装
-  - [ ] Cookie からカート内容を読み、商品 ID で API から価格等を取得してリスト表示（商品名・価格・割引後・数量・小計）。数量変更・削除時は Cookie を更新
-  - [ ] 合計金額表示と「注文する」ボタン（POST /api/orders でモック注文確定）
+- [x] **カートは Cookie（名前: cart）で維持**。lib/cart-cookie.ts で window.cart（get, set, add, remove, updateQty, count）を注入
+- [x] ヘッダーに買い物カートボタン（バッジで件数表示）とハンバーガーメニューを配置
+- [x] **カート一覧**（`/app/cart`）：Cookie から読み、API で商品詳細を取得してリスト表示。数量変更・削除で Cookie 更新。合計と「注文する」で POST /api/orders
 
 ### 7. ナビゲーション
 
-- [ ] ログイン後のレイアウトに、商品一覧・AI 提案・カート・ログアウトへのリンクまたはメニューを追加
+- [x] ヘッダーのハンバーガーメニューからホーム・商品一覧・AI提案・カート・アカウント・ログアウトへ遷移。ホーム（/app）にショートカットリンクを配置
 
 ### 8. 動作確認
 
@@ -73,6 +66,6 @@ status: pending
 
 ## 注意事項
 
-- API のベース URL は環境変数で切り替え可能にし、開発時はローカルの Go API、本番は Cloud Run の URL を指すようにする
-- エラー表示（ネットワークエラー、401、バリデーションエラー）をユーザーに分かりやすく表示する
-- アイコンは **react-icons** で統一する（[frontend-design.md](../design/frontend-design.md) の技術方針に準拠）
+- API のベース URL は環境変数 **API_BASE_URL** で切り替え可能（未設定時は http://localhost:8080）。本番は Cloud Run の URL を指定する
+- エラー表示は各ページの #error 要素にメッセージを表示。401 時は /auth/login へリダイレクト
+- アイコンは現状 inline SVG。React 導入後に **react-icons** へ統一可能（[frontend-design.md](../design/frontend-design.md) 参照）
