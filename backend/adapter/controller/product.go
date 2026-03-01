@@ -1,10 +1,12 @@
 package controller
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
+	"example.com/backend/adapter/repository"
 	"example.com/backend/usecase"
 )
 
@@ -29,7 +31,15 @@ func (c *ProductController) GetProduct(ctx *gin.Context) {
 	id := ctx.Param("id")
 	product, err := c.uc.GetProduct(ctx.Request.Context(), id)
 	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			ctx.JSON(http.StatusNotFound, gin.H{"error": "product not found"})
+			return
+		}
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if product == nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "product not found"})
 		return
 	}
 	ctx.JSON(http.StatusOK, product)

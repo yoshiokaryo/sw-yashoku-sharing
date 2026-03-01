@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 ---
 
 # 004 バックエンド：商品・店舗 API 実装
@@ -17,30 +17,28 @@ GET /api/products（一覧）、GET /api/products/:id（詳細）、GET /api/sto
 
 ### 1. Repository 実装（adapter/repository）
 
-- [ ] `adapter/repository/product.go` を実装
-  - [ ] ProductRepository インターフェース（port）を実装
-  - [ ] 商品一覧取得：`stores` JOIN `products` JOIN `inventory` で、在庫あり（stock > 0）のものを取得し、割引率・賞味期限を含めて返す
-  - [ ] 商品詳細取得：product_id で 1 件取得
-- [ ] `adapter/repository/store.go` を実装（または product.go に含める）
-  - [ ] 店舗一覧取得：`stores` を全件返す（必要なら product の件数などは 004 ではシンプルに）
+- [x] `adapter/repository/product.go` を実装
+  - [x] ProductRepository インターフェース（port）を実装
+  - [x] 商品一覧取得：`stores` JOIN `products` JOIN `inventory` で、在庫あり（stock > 0）のものを取得し、割引率・賞味期限を含めて返す
+  - [x] 商品詳細取得：product_id で 1 件取得
+- [x] 店舗一覧は `product.go` に含める（ListStores）
+  - [x] 店舗一覧取得：`stores` を全件返す
 
 ### 2. Use Case 実装（usecase）
 
-- [ ] `usecase/product.go` で、ProductRepository を呼び出して一覧・詳細を返すロジックを完成させる
-- [ ] 店舗一覧用の usecase を実装（または product usecase に store 一覧取得を追加）
+- [x] `usecase/product.go` で、ProductRepository を呼び出して一覧・詳細・店舗一覧を返すロジックは既に完成済み
 
 ### 3. Controller 実装（adapter/controller）
 
-- [ ] `adapter/controller/product.go` を実装
-  - [ ] GET /api/products：一覧を JSON で返す（在庫・割引・賞味期限を含む）
-  - [ ] GET /api/products/:id：1 件を JSON で返す。存在しなければ 404
-- [ ] `adapter/controller/store.go` を実装（または product に統合）
-  - [ ] GET /api/stores：店舗一覧を JSON で返す
+- [x] `adapter/controller/product.go` を実装
+  - [x] GET /api/products：一覧を JSON で返す（在庫・割引・賞味期限を含む）
+  - [x] GET /api/products/:id：1 件を JSON で返す。存在しなければ 404（repository.ErrNotFound）
+  - [x] GET /api/stores：店舗一覧を JSON で返す
 
 ### 4. ルーティング・DI 接続
 
-- [ ] `router/router.go` で上記 controller を usecase に接続し、GET /api/products, GET /api/products/:id, GET /api/stores を登録
-- [ ] `main.go` で ProductRepository 実装（adapter/repository）を usecase に注入し、controller に usecase を渡していることを確認
+- [x] `router/router.go` で GET /api/products, GET /api/products/:id, GET /api/stores は既に登録済み
+- [x] `main.go` で ProductRepository を usecase に注入し、controller に usecase を渡していることを確認済み
 
 ### 5. 動作確認
 
